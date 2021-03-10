@@ -45,22 +45,26 @@
     return num;
   }
 
-  function isInvalidNumberBombsAndSpacesLeft(number_array) {
+  function isInvalidNumberBombsAndSpacesLeft(bomb_array, number_array) {
     let totalBombs = parseInt($(document.getElementById("mines_ones").classList)[0][4]) 
       + 10*parseInt($(document.getElementById("mines_tens").classList)[0][4])
       + 100*10*parseInt($(document.getElementById("mines_hundreds").classList)[0][4]);
-    let numUnknownsLeft = 0;
+    let numUnknowns = 0;
+    let numBombs = 0;
     for (let i = 0; i < height; i++) {
       for (let j = 0; j < width; j++) {
+        if (bomb_array[i][j] == 1) {
+          numBombs++;
+        }
         if (number_array[i][j] == -1) {
-          numUnknownsLeft++;
+          numUnknowns++;
         }
       }
     }
-    if (totalBombs > numUnknownsLeft) {
-      console.log("Almost! UnknownsLeft: " + numUnknownsLeft);
+    if (numUnknowns < totalBombs || numBombs > totalBombs) {
+      console.log("Cheeky logic. numUnknowns: " + numUnknowns + ", totalBombs: " + totalBombs + ", numBombs: " + numBombs);
     }
-    return totalBombs > numUnknownsLeft;
+    return numUnknowns < totalBombs || numBombs > totalBombs;
   }
 
   // Initial setup
@@ -146,7 +150,7 @@
                     }
                   }
                 }
-                let invalid = isInvalidNumberBombsAndSpacesLeft(number_array_copy);
+                let invalid = isInvalidNumberBombsAndSpacesLeft(bomb_array_copy, number_array_copy);
                 for (let i3 = 0; i3 < height; i3++) {
                   for (let j3 = 0; j3 < width; j3++) {
                     // If the board isn't valid, then the original square must not be a bomb
@@ -181,7 +185,7 @@
                     }
                   }
                 }
-                let invalid = isInvalidNumberBombsAndSpacesLeft(number_array_copy);
+                let invalid = isInvalidNumberBombsAndSpacesLeft(bomb_array_copy, number_array_copy);
                 for (let i3 = 0; i3 < height; i3++) {
                   for (let j3 = 0; j3 < width; j3++) {
                     // If the board isn't valid, then the original square must be a bomb
@@ -225,6 +229,15 @@
         if ((number_array[i][j] == -1) && (bomb_array[i][j] == 0) && (i != bestOddX || j != bestOddY)) {
           await clickSquare(i,j);
           console.log("Guess " + i + "," + j + " with failure odds 1 in " + bestOdds + " from square " + bestOddX + "," + bestOddY);
+          continue iterate;
+        }
+      }
+    }
+    for (let i = 0; i < height; i++) {
+      for (let j = 0; j < width; j++) {
+        if (number_array[i][j] == -1 && bomb_array[i][j] == 0) {
+          await clickSquare(i,j);
+          console.log("Guess " + i + "," + j + " with unknown failure odds");
           continue iterate;
         }
       }

@@ -45,6 +45,24 @@
     return num;
   }
 
+  function isInvalidNumberBombsAndSpacesLeft(number_array) {
+    let totalBombs = parseInt($(document.getElementById("mines_ones").classList)[0][4]) 
+      + 10*parseInt($(document.getElementById("mines_tens").classList)[0][4])
+      + 100*10*parseInt($(document.getElementById("mines_hundreds").classList)[0][4]);
+    let numUnknownsLeft = 0;
+    for (let i = 0; i < height; i++) {
+      for (let j = 0; j < width; j++) {
+        if (number_array[i][j] == -1) {
+          numUnknownsLeft++;
+        }
+      }
+    }
+    if (totalBombs > numUnknownsLeft) {
+      console.log("Almost! UnknownsLeft: " + numUnknownsLeft);
+    }
+    return totalBombs > numUnknownsLeft;
+  }
+
   // Initial setup
   let bomb_array = new Array(height);
   for (let i = 0; i < height; i++) {
@@ -105,28 +123,6 @@
       }
     }
 
-    function isValidBoardTryBomb(number_array) {
-      for (let i = 0; i < height; i++) {
-        for (let j = 0; j < width; j++) {
-          if (getUnknownSquaresAround(i,j,number_array) < number_array[i][j] && number_array[i][j] != 10) {
-            return false;
-          }
-        }
-      }
-      return true;
-    }
-
-    function isValidBoardTryNotBomb(bomb_array, number_array) {
-      for (let i = 0; i < height; i++) {
-        for (let j = 0; j < width; j++) {
-          if (getBombsAround(i,j,bomb_array) > number_array[i][j] && number_array[i][j] != -1) {
-            return false;
-          }
-        }
-      }
-      return true;
-    }
-
     // More difficult actions
     for (let i = 0; i < height; i++) {
       for (let j = 0; j < width; j++) {
@@ -134,7 +130,6 @@
          // Try setting a square as a bomb
         if (number_array[i][j] == -1 && bomb_array[i][j] == 0) {
           bomb_array_copy = JSON.parse(JSON.stringify(bomb_array));
-          number_array_copy = JSON.parse(JSON.stringify(number_array));
           bomb_array_copy[i][j] = 1;
 
           // For each adjacent square, see if it makes any action obvious
@@ -142,20 +137,25 @@
             for (let j2 = Math.max(0, j-1); j2 < Math.min(width, j+2); j2++) {
 
               // Check to see if we click any squares around the adjacent square
-              if ((number_array_copy[i2][j2] == getBombsAround(i2,j2,bomb_array_copy)) && (number_array_copy[i2][j2] != getUnknownSquaresAround(i2,j2,number_array_copy))) {
-                number_array_copy2 = JSON.parse(JSON.stringify(number_array_copy));
+              if ((number_array[i2][j2] == getBombsAround(i2,j2,bomb_array_copy)) && (number_array[i2][j2] != getUnknownSquaresAround(i2,j2,number_array))) {
+                number_array_copy = JSON.parse(JSON.stringify(number_array));
                 for (let i3 = Math.max(0, i2-1); i3 < Math.min(height, i2+2); i3++) {
                   for (let j3 = Math.max(0, j2-1); j3 < Math.min(width, j2+2); j3++) {
-                    if ((number_array_copy2[i3][j3] == -1) && (bomb_array_copy[i3][j3] == 0) && (i3 != i2 || j3 != j2)) {
-                      number_array_copy2[i3][j3] = 10; // Not a bomb, but we don't know the number
+                    if ((number_array_copy[i3][j3] == -1) && (bomb_array_copy[i3][j3] == 0) && (i3 != i2 || j3 != j2)) {
+                      number_array_copy[i3][j3] = 10; // Not a bomb, but we don't know the number
                     }
                   }
                 }
-                // If the board isn't valid, then the original square must not be a bomb
-                if (!isValidBoardTryBomb(number_array_copy2)) {
-                  console.log("Advanced click " + i + "," + j);
-                  await clickSquare(i,j);
-                  continue iterate;
+                let invalid = isInvalidNumberBombsAndSpacesLeft(number_array_copy);
+                for (let i3 = 0; i3 < height; i3++) {
+                  for (let j3 = 0; j3 < width; j3++) {
+                    // If the board isn't valid, then the original square must not be a bomb
+                    invalid |= (getUnknownSquaresAround(i3,j3,number_array_copy) < number_array_copy[i3][j3] && number_array_copy[i3][j3] != 10);
+                    if (invalid) {
+                      await clickSquare(i,j);
+                      continue iterate;
+                    }
+                  }
                 }
               }    
             }
@@ -174,7 +174,6 @@
 
               // Check to see if we set any bombs around the adjacent square
               if ((number_array_copy[i2][j2] == getUnknownSquaresAround(i2,j2,number_array_copy)) && (number_array_copy[i2][j2] != getBombsAround(i2,j2,bomb_array_copy))) {
-                
                 for (let i3 = Math.max(0, i2-1); i3 < Math.min(height, i2+2); i3++) {
                   for (let j3 = Math.max(0, j2-1); j3 < Math.min(width, j2+2); j3++) {
                     if (number_array_copy[i3][j3] == -1 && (i3 != i2 || j3 != j2)) {
@@ -182,11 +181,16 @@
                     }
                   }
                 }
-                // If the board isn't valid, then the original square must be a bomb
-                if (!isValidBoardTryNotBomb(bomb_array_copy, number_array_copy)) {
-                  console.log("Advanced bomb placement " + i + "," + j);
-                  bomb_array[i][j] = 1;
-                  continue iterate;
+                let invalid = isInvalidNumberBombsAndSpacesLeft(number_array_copy);
+                for (let i3 = 0; i3 < height; i3++) {
+                  for (let j3 = 0; j3 < width; j3++) {
+                    // If the board isn't valid, then the original square must be a bomb
+                    invalid |= (getBombsAround(i3,j3,bomb_array_copy) > number_array_copy[i3][j3] && number_array_copy[i3][j3] != -1);
+                    if (invalid) {
+                      bomb_array[i][j] = 1;
+                      continue iterate;
+                    }
+                  }
                 }
               }    
             }
@@ -195,17 +199,35 @@
       }
     }
 
+    // Future: Find the lowest odds at each square
+
     // Hope for the best
+    let bestOdds = 0;
+    let bestOddX, bestOddY = 0;
     for (let i = 0; i < height; i++) {
       for (let j = 0; j < width; j++) {
-        if ((number_array[i][j] == -1) && (bomb_array[i][j] == 0)) {
+        if (number_array[i][j] != -1) {
+          let numBombsLeft = number_array[i][j]-getBombsAround(i,j,bomb_array);
+          let numUnknownSpacesLeft = getUnknownSquaresAround(i,j,number_array)-getBombsAround(i,j,bomb_array);
+          if (numBombsLeft != 0) {
+            let odds = numUnknownSpacesLeft/numBombsLeft;
+            if (odds > bestOdds) {
+              bestOdds = odds;
+              bestOddX = i;
+              bestOddY = j;
+            }
+          }
+        }
+      }
+    }
+    for (let i = Math.max(0, bestOddX-1); i < Math.min(height, bestOddX+2); i++) {
+      for (let j = Math.max(0, bestOddY-1); j < Math.min(width, bestOddY+2); j++) { 
+        if ((number_array[i][j] == -1) && (bomb_array[i][j] == 0) && (i != bestOddX || j != bestOddY)) {
           await clickSquare(i,j);
-          console.log("Guess " + i + "," + j);
+          console.log("Guess " + i + "," + j + " with failure odds 1 in " + bestOdds + " from square " + bestOddX + "," + bestOddY);
           continue iterate;
         }
       }
     }
-
   }
-
 })()

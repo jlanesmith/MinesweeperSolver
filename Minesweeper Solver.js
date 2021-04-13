@@ -25,7 +25,7 @@
     for (let i = Math.max(0, x-1); i < Math.min(height, x+2); i++) {
       for (let j = Math.max(0, y-1); j < Math.min(width, y+2); j++) {
         if (bomb_array[i][j] && (i != x || j != y)) { 
-          // (i != x || j != y) is to ensure we're not considering the actual square
+          // Note: (i != x || j != y) is to ensure we're not considering the actual square
           num++;
         }
       }
@@ -49,7 +49,7 @@
     let totalBombs = parseInt($(document.getElementById("mines_ones").classList)[0][4]) 
       + 10*parseInt($(document.getElementById("mines_tens").classList)[0][4])
       + 100*10*parseInt($(document.getElementById("mines_hundreds").classList)[0][4]);
-    let numUnknowns = 0;
+    let numUnknownsAndBombs = 0;
     let numBombs = 0;
     for (let i = 0; i < height; i++) {
       for (let j = 0; j < width; j++) {
@@ -57,14 +57,14 @@
           numBombs++;
         }
         if (number_array[i][j] == -1) {
-          numUnknowns++;
+          numUnknownsAndBombs++;
         }
       }
     }
-    if (numUnknowns < totalBombs || numBombs > totalBombs) {
-      console.log("Cheeky logic. numUnknowns: " + numUnknowns + ", totalBombs: " + totalBombs + ", numBombs: " + numBombs);
+    if (numUnknownsAndBombs < totalBombs || numBombs > totalBombs) {
+      console.log("Cheeky logic!");
     }
-    return numUnknowns < totalBombs || numBombs > totalBombs;
+    return numUnknownsAndBombs < totalBombs || numBombs > totalBombs;
   }
 
   // Initial setup
@@ -94,6 +94,7 @@
     for (let i = 0; i < height; i++) {
       number_array[i] = new Array(width);
       for (let j = 0; j < width; j++) {
+        // Note: number_array contains -1 for any bomb or unknown space
         number_array[i][j] = getValue(i, j);
       }
     }
@@ -203,44 +204,88 @@
       }
     }
 
-    // Future: Find the lowest odds at each square
-
-    // Hope for the best
-    let bestOdds = 0;
-    let bestOddX, bestOddY = 0;
+    // Make array of odds
+    let odds_array = new Array(height);
+    for (let i = 0; i < height; i++) {
+      odds_array[i] = new Array(width);
+      for (let j = 0; j < width; j++) {
+        odds_array[i][j] = 9;
+      }
+    }
+    // For each square
     for (let i = 0; i < height; i++) {
       for (let j = 0; j < width; j++) {
         if (number_array[i][j] != -1) {
           let numBombsLeft = number_array[i][j]-getBombsAround(i,j,bomb_array);
           let numUnknownSpacesLeft = getUnknownSquaresAround(i,j,number_array)-getBombsAround(i,j,bomb_array);
           if (numBombsLeft != 0) {
+            // Get odds for surrounding squares
             let odds = numUnknownSpacesLeft/numBombsLeft;
-            if (odds > bestOdds) {
-              bestOdds = odds;
-              bestOddX = i;
-              bestOddY = j;
+            // Update odds_array value for each surrounding square
+            for (let i2 = Math.max(0, i-1); i2 < Math.min(height, i+2); i2++) {
+              for (let j2 = Math.max(0, j-1); j2 < Math.min(width, j+2); j2++) { 
+                if ((number_array[i2][j2] == -1) && (bomb_array[i2][j2] == 0) && (i2 != i || j2 != j)) {
+                  // Get the worst case scenario
+                  odds_array[i2][j2] = Math.min(odds_array[i2][j2], odds);
+                }
+              }
             }
           }
         }
       }
     }
-    for (let i = Math.max(0, bestOddX-1); i < Math.min(height, bestOddX+2); i++) {
-      for (let j = Math.max(0, bestOddY-1); j < Math.min(width, bestOddY+2); j++) { 
-        if ((number_array[i][j] == -1) && (bomb_array[i][j] == 0) && (i != bestOddX || j != bestOddY)) {
-          await clickSquare(i,j);
-          console.log("Guess " + i + "," + j + " with failure odds 1 in " + bestOdds + " from square " + bestOddX + "," + bestOddY);
-          continue iterate;
+    // Get best odds of any square
+    let bestOdds = 0;
+    let bestOddX, bestOddY = 0;
+    for (let i = 0; i < height; i++) {
+      for (let j = 0; j < width; j++) {
+        if (odds_array[i][j] > bestOdds && odds_array[i][j] != 9) {
+          bestOdds = odds_array[i][j];
+          bestOddX = i;
+          bestOddY = j;
         }
       }
     }
+
+    // Get overall odds
+    let totalBombs = parseInt($(document.getElementById("mines_ones").classList)[0][4]) 
+      + 10*parseInt($(document.getElementById("mines_tens").classList)[0][4])
+      + 100*10*parseInt($(document.getElementById("mines_hundreds").classList)[0][4]);
+    let numUnknownsAndBombs = 0;
+    let numBombs = 0;
     for (let i = 0; i < height; i++) {
       for (let j = 0; j < width; j++) {
-        if (number_array[i][j] == -1 && bomb_array[i][j] == 0) {
-          await clickSquare(i,j);
-          console.log("Guess " + i + "," + j + " with unknown failure odds");
-          continue iterate;
+        if (bomb_array[i][j] == 1) {
+          numBombs++;
+        }
+        if (number_array[i][j] == -1) {
+          numUnknownsAndBombs++;
         }
       }
+    }
+    let overallOdds = (numUnknownsAndBombs-numBombs)/(totalBombs-numBombs);
+
+    // Hope for the best!
+    if (bestOdds >= overallOdds) {
+      // Click the square with the best odds if it's better than the overall odds
+      await clickSquare(bestOddX,bestOddY);
+      console.log("Guess " + bestOddX + "," + bestOddY + " with failure odds 1 in " + bestOdds + " with overall " + overallOdds.toPrecision(3)); 
+      continue iterate;
+    } else {
+      // Click a square that we know nothing about, if we can
+      for (let i = 0; i < height; i++) {
+        for (let j = 0; j < width; j++) {
+          if ((odds_array[i][j] == 9) && (number_array[i][j] == -1) && (bomb_array[i][j] == 0)) {
+            await clickSquare(i,j);
+            console.log("Guess " + i + "," + j + " with overall failure odds 1 in " + overallOdds.toPrecision(3));
+            continue iterate;
+          }
+        }
+      }
+      // Click the square with the best odds even though it's worse than the overall odds
+      await clickSquare(bestOddX,bestOddY);
+      console.log("Reluctantly guess " + bestOddX + "," + bestOddY + " with failure odds 1 in " + bestOdds + " with overall " + overallOdds.toPrecision(3)); 
+      continue iterate;
     }
   }
 })()

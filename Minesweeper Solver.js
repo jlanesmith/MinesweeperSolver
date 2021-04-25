@@ -1,5 +1,11 @@
 (async function() {
 
+  "use strict";
+
+  /(?:^|;)\s*[^\s/][^;]*[^{;}](?:$|\s*\/\/)/g;
+  // This is the regex for finding valid lines of code not ending in a semicolon, which should end in a semicolon
+  // Acknowledgements: Jeremy Rumph
+
   window.customPrompt = window.customPrompt ?? window.prompt;
   window.prompt = n=>'JonBot';
 
@@ -185,7 +191,7 @@
 
           // Try setting a square as a bomb
           if (number_array[i][j] == -1 && bomb_array[i][j] == 0) {
-            bomb_array_copy = JSON.parse(JSON.stringify(bomb_array));
+            let bomb_array_copy = JSON.parse(JSON.stringify(bomb_array));
             bomb_array_copy[i][j] = 1;
 
             // For each adjacent square, see if it makes any action obvious
@@ -194,7 +200,7 @@
 
                 // Check to see if we click any squares around the adjacent square
                 if ((number_array[i2][j2] == getBombsAround(i2,j2,bomb_array_copy)) && (number_array[i2][j2] != getUnknownSquaresAround(i2,j2,number_array))) {
-                  number_array_copy = JSON.parse(JSON.stringify(number_array));
+                  let number_array_copy = JSON.parse(JSON.stringify(number_array));
                   for (let i3 = Math.max(0, i2-1); i3 < Math.min(height, i2+2); i3++) {
                     for (let j3 = Math.max(0, j2-1); j3 < Math.min(width, j2+2); j3++) {
                       if ((number_array_copy[i3][j3] == -1) && (bomb_array_copy[i3][j3] == 0) && (i3 != i2 || j3 != j2)) {
@@ -220,8 +226,8 @@
 
           // Try setting it as not a bomb
           if (number_array[i][j] == -1 && bomb_array[i][j] == 0) {
-            bomb_array_copy = JSON.parse(JSON.stringify(bomb_array));
-            number_array_copy = JSON.parse(JSON.stringify(number_array));
+            let bomb_array_copy = JSON.parse(JSON.stringify(bomb_array));
+            let number_array_copy = JSON.parse(JSON.stringify(number_array));
             number_array_copy[i][j] = 10;
 
             // For each adjacent square, see if it makes any action obvious
@@ -320,7 +326,7 @@
       if (bestOdds >= overallOdds) {
         // Click the square with the best odds if it's better than the overall odds
         await clickSquare(bestOddX,bestOddY);
-        debug("Guess " + bestOddX + "," + bestOddY + " with failure odds 1 in " + bestOdds + " with overall " + overallOdds.toPrecision(3)); 
+        debug("Guess " + bestOddX + "," + bestOddY + " with failure odds 1 in " + bestOdds + " with overall " + overallOdds.toPrecision(3));
         continue iterate;
       } else {
         // Click a square that we know nothing about, if we can
@@ -341,4 +347,4 @@
     }
   }
   console.log("Final score: Fail=" + numFails + ", Success=" + numSuccess + ", Score=" + (numSuccess/(numSuccess+numFails)));
-})()
+})();
